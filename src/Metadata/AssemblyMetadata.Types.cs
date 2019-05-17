@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Reflection.Metadata;
+using System.Reflection.Metadata.Ecma335;
 
 namespace Lokad.ILPack.Metadata
 {
@@ -7,6 +8,13 @@ namespace Lokad.ILPack.Metadata
     {
         public EntityHandle GetTypeHandle(Type type)
         {
+            if (type.IsGenericType && !type.IsGenericTypeDefinition)
+            {
+                var typeSpecEncoder = new BlobEncoder(new BlobBuilder()).TypeSpecificationSignature();
+                typeSpecEncoder.FromSystemType(type, this);
+                return Builder.AddTypeSpecification(GetOrAddBlob(typeSpecEncoder.Builder));
+            }
+
             if (TryGetTypeDefinition(type, out var metadata))
             {
                 return metadata.Handle;
@@ -17,7 +25,7 @@ namespace Lokad.ILPack.Metadata
                 return ResolveTypeReference(type);
             }
 
-            throw new InvalidOperationException($"Type cannot be found: {type}");
+            throw new ArgumentException($"Type cannot be found: {MetadataHelper.GetFriendlyName(type)}", nameof(type));
         }
 
         public bool IsReferencedType(Type type)
@@ -36,7 +44,8 @@ namespace Lokad.ILPack.Metadata
         {
             if (!IsReferencedType(type))
             {
-                throw new ArgumentException("Reference type is expected.", nameof(type));
+                throw new ArgumentException($"Reference type is expected: {MetadataHelper.GetFriendlyName(type)}",
+                    nameof(type));
             }
 
             if (_typeRefHandles.TryGetValue(type.GUID, out var typeRef))
@@ -64,9 +73,9 @@ namespace Lokad.ILPack.Metadata
         }
 
         public TypeDefinitionMetadata ReserveTypeDefinition(Type type, TypeDefinitionHandle handle, int fieldIndex,
-            int propertyIndex, int methodIndex)
+            int propertyIndex, int methodIndex, int eventIndex)
         {
-            var metadata = new TypeDefinitionMetadata(type, handle, fieldIndex, propertyIndex, methodIndex);
+            var metadata = new TypeDefinitionMetadata(type, handle, fieldIndex, propertyIndex, methodIndex, eventIndex);
             _typeDefHandles.Add(type.GUID, metadata);
             return metadata;
         }

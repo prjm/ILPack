@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using System.Reflection.Metadata;
 using System.Reflection.Metadata.Ecma335;
 using Lokad.ILPack.Metadata;
 
@@ -14,7 +13,7 @@ namespace Lokad.ILPack
         ///     Gets all interfaces and base types of a given type including all of its parents.
         ///     Referenced types from external assemblies are excluded.
         /// </summary>
-        /// <param name="type"></param>
+        /// <param name="type">Type to be examined.</param>
         /// <returns>All interfaces and base types of given type and its parents recursively.</returns>
         private IEnumerable<Type> GetBaseTypes(Type type)
         {
@@ -57,12 +56,14 @@ namespace Lokad.ILPack
             {
                 CreateFields(type.GetFields(AllFields));
                 CreatePropertiesForType(type.GetProperties(AllProperties));
+                CreateEventsForType(type.GetEvents(AllEvents));
                 CreateConstructors(type.GetConstructors(AllMethods));
                 CreateMethods(type.GetMethods(AllMethods));
 
                 if (!_metadata.TryGetTypeDefinition(type, out var metadata))
                 {
-                    throw new InvalidOperationException($"Type definition metadata cannot be found: {type}");
+                    throw new InvalidOperationException(
+                        $"Type definition metadata cannot be found: {MetadataHelper.GetFriendlyName(type)}");
                 }
 
                 metadata.MarkAsEmitted();
@@ -75,7 +76,8 @@ namespace Lokad.ILPack
             {
                 FieldIndex = _metadata.Builder.GetRowCount(TableIndex.Field),
                 PropertyIndex = _metadata.Builder.GetRowCount(TableIndex.PropertyMap),
-                MethodIndex = _metadata.Builder.GetRowCount(TableIndex.MethodDef)
+                MethodIndex = _metadata.Builder.GetRowCount(TableIndex.MethodDef),
+                EventIndex = _metadata.Builder.GetRowCount(TableIndex.EventMap)
             };
 
             foreach (var type in types)
@@ -92,6 +94,7 @@ namespace Lokad.ILPack
             var fieldRowCount = offset.FieldIndex;
             var propertyRowCount = offset.PropertyIndex;
             var methodRowCount = offset.MethodIndex;
+            var eventRowCount = offset.EventIndex;
 
             foreach (var field in type.GetFields(AllFields))
             {
@@ -107,6 +110,13 @@ namespace Lokad.ILPack
                 var propertyHandle = MetadataTokens.PropertyDefinitionHandle(propertyRowCount + 1);
                 _metadata.ReservePropertyDefinition(property, propertyHandle);
                 ++propertyRowCount;
+            }
+
+            foreach (var ev in type.GetEvents(AllEvents))
+            {
+                var eventHandle = MetadataTokens.EventDefinitionHandle(eventRowCount + 1);
+                _metadata.ReserveEventDefinition(ev, eventHandle);
+                ++eventRowCount;
             }
 
             foreach (var ctor in type.GetConstructors(AllMethods))
@@ -133,7 +143,7 @@ namespace Lokad.ILPack
 
             // Add immediately to support self referencing generics
             _metadata.ReserveTypeDefinition(type, typeHandle, offset.FieldIndex, offset.PropertyIndex,
-                offset.MethodIndex);
+                offset.MethodIndex, offset.EventIndex);
 
             // Handle generics type
             if (type.IsGenericType)
@@ -165,7 +175,8 @@ namespace Lokad.ILPack
             {
                 FieldIndex = fieldRowCount,
                 PropertyIndex = propertyRowCount,
-                MethodIndex = methodRowCount
+                MethodIndex = methodRowCount,
+                EventIndex = eventRowCount
             };
         }
     }

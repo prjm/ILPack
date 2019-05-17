@@ -17,6 +17,7 @@ namespace Lokad.ILPack.Metadata
         private readonly Dictionary<MethodInfo, MemberReferenceHandle> _methodRefHandles;
         private readonly Dictionary<ParameterInfo, ParameterHandle> _parameterHandles;
         private readonly Dictionary<PropertyInfo, PropertyDefinitionMetadata> _propertyHandles;
+        private readonly Dictionary<EventInfo, EventDefinitionMetadata> _eventHandles;
         private readonly Dictionary<Guid, TypeDefinitionMetadata> _typeDefHandles;
         private readonly Dictionary<Guid, TypeReferenceHandle> _typeRefHandles;
 
@@ -35,6 +36,7 @@ namespace Lokad.ILPack.Metadata
             _methodRefHandles = new Dictionary<MethodInfo, MemberReferenceHandle>();
             _parameterHandles = new Dictionary<ParameterInfo, ParameterHandle>();
             _propertyHandles = new Dictionary<PropertyInfo, PropertyDefinitionMetadata>();
+            _eventHandles = new Dictionary<EventInfo, EventDefinitionMetadata>();
             _typeDefHandles = new Dictionary<Guid, TypeDefinitionMetadata>();
             _typeRefHandles = new Dictionary<Guid, TypeReferenceHandle>();
 
@@ -64,6 +66,12 @@ namespace Lokad.ILPack.Metadata
         {
             return Builder.GetOrAddGuid(value);
         }
+
+        public StandaloneSignatureHandle AddStandAloneSignature(BlobBuilder blobBuilder)
+        {
+            return Builder.AddStandaloneSignature(GetOrAddBlob(blobBuilder));
+        }
+        
 
         public StringHandle GetOrAddString(string value)
         {
