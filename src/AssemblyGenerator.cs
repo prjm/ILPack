@@ -19,6 +19,31 @@ namespace Lokad.ILPack
             _debugDirectoryBuilder = new DebugDirectoryBuilder();
         }
 
+        /// <summary>
+        /// Called by the unit tests to rename the assembly and the namespaces 
+        /// in the rewritten assembly.  This allows the unit tests to load
+        /// both RewrittenOriginal.dll and RewrittenClone.dll.
+        /// </summary>
+        /// <param name="oldName">Name to replace</param>
+        /// <param name="newName">What to replace it with</param>
+        internal void RenameForTesting(string oldName, string newName)
+        {
+            _oldName = oldName;
+            _newName = newName;
+        }
+
+        string _oldName;
+        string _newName;
+
+        // Apply name changes to assembly and namespace names
+        internal string ApplyNameChange(string str)
+        {
+            if (_oldName == null)
+                return str;
+            else
+                return str.Replace(_oldName, _newName);
+        }
+
         public byte[] GenerateAssemblyBytes(Assembly assembly)
         {
             Initialize(assembly);
@@ -33,12 +58,14 @@ namespace Lokad.ILPack
 
             var assemblyPublicKey = name.GetPublicKey();
             var assemblyHandle = _metadata.Builder.AddAssembly(
-                _metadata.GetOrAddString(name.Name),
+                _metadata.GetOrAddString(ApplyNameChange(name.Name)),
                 name.Version,
                 _metadata.GetOrAddString(name.CultureName),
                 assemblyPublicKey.Length > 0 ? _metadata.GetOrAddBlob(name.GetPublicKey()) : default,
                 ConvertGeneratedAssemblyNameFlags(name),
                 ConvertAssemblyHashAlgorithm(name.HashAlgorithm));
+
+            CreateCustomAttributes(assemblyHandle, assembly.GetCustomAttributesData());
 
             // Add "<Module>" type definition *before* any type definition.
             //
