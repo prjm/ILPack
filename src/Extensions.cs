@@ -118,7 +118,11 @@ namespace Lokad.ILPack
         internal static void FromSystemType(this SignatureTypeEncoder typeEncoder, Type type,
             IAssemblyMetadata metadata)
         {
-            if (type.IsPrimitive)
+            if (type.IsPointer && type.GetElementType().IsPrimitive)
+            {
+                typeEncoder.Pointer().PrimitiveType(GetPrimitiveTypeCode(type.GetElementType()));
+            }
+            else if (type.IsPrimitive)
             {
                 typeEncoder.PrimitiveType(GetPrimitiveTypeCode(type));
             }
@@ -139,14 +143,24 @@ namespace Lokad.ILPack
             else if (type.IsArray)
             {
                 var elementType = type.GetElementType();
-                var rank = type.GetArrayRank();
 
-                typeEncoder.Array(
-                    x => x.FromSystemType(elementType, metadata),
-                    x => x.Shape(
-                        type.GetArrayRank(),
-                        ImmutableArray.Create<int>(),
-                        ImmutableArray.Create<int>()));
+                if (type.GetArrayRank() == 1)
+                {
+                    typeEncoder.SZArray().FromSystemType(elementType, metadata);
+                }
+                else
+                {
+                    typeEncoder.Array(
+                        x => x.FromSystemType(elementType, metadata),
+                        x => x.Shape(
+                            type.GetArrayRank(),
+                            ImmutableArray.Create<int>(),
+                            ImmutableArray.Create<int>()));
+                }
+            }
+            else if (type.IsByRef)
+            {
+                throw new InvalidOperationException("ByRef types not allowed in SignatureType encoder (should be handled in calling ParameterEncoder)");
             }
             else if (type.IsGenericType)
             {
@@ -154,7 +168,7 @@ namespace Lokad.ILPack
                 var typeHandler = metadata.GetTypeHandle(genericTypeDef);
                 var genericArguments = type.GetGenericArguments();
 
-                var inst = typeEncoder.GenericInstantiation(typeHandler, genericArguments.Length, false);
+                var inst = typeEncoder.GenericInstantiation(typeHandler, genericArguments.Length, type.IsValueType);
                 foreach (var ga in genericArguments)
                 {
                     if (ga.IsGenericParameter)
@@ -166,6 +180,14 @@ namespace Lokad.ILPack
                         inst.AddArgument().FromSystemType(ga, metadata);
                     }
                 }
+            }
+            else if (type.IsGenericMethodParameter)
+            {
+                typeEncoder.GenericMethodTypeParameter(type.GenericParameterPosition);
+            }
+            else if (type.IsGenericParameter)
+            {
+                typeEncoder.GenericTypeParameter(type.GenericParameterPosition);
             }
             else
             {

@@ -7,9 +7,9 @@ namespace Lokad.ILPack
 {
     public partial class AssemblyGenerator
     {
-        private readonly BindingFlags AllEvents =
+        private const BindingFlags AllEvents =
             BindingFlags.NonPublic | BindingFlags.Public |
-            BindingFlags.Instance | BindingFlags.Static;
+            BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly;
 
         private void CreateEvent(EventInfo ev, bool addToEventMap)
         {
@@ -57,7 +57,7 @@ namespace Lokad.ILPack
             {
                 if (!_metadata.TryGetMethodDefinition(ev.RemoveMethod, out var removeMethodMetadata))
                 {
-                    ThrowMetadataIsNotReserved("Property setter method", ev);
+                    ThrowMetadataIsNotReserved("Event remove method", ev);
                 }
 
                 _metadata.Builder.AddMethodSemantics(
