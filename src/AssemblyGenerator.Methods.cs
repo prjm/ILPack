@@ -21,27 +21,37 @@ namespace Lokad.ILPack
 
             EnsureMetadataWasNotEmitted(metadata, method);
 
-            var offset = -1;
             var body = method.GetMethodBody();
+
+            var localVariablesSignature = default(StandaloneSignatureHandle);
+
+            if (body != null && body.LocalVariables.Count > 0)
+            {
+                localVariablesSignature = _metadata.Builder.AddStandaloneSignature(_metadata.GetOrAddBlob(
+                    MetadataHelper.BuildSignature(x =>
+                    {
+                        x.LocalVariableSignature(body.LocalVariables.Count).AddRange(body.LocalVariables, _metadata);
+                    })));
+            }
+
+            var offset = -1;
+
             // If body exists, we write it in IL body stream
             if (body != null && !method.IsAbstract)
             {
-                offset = _metadata.ILBuilder.Count; // take an offset
-
                 var methodBodyWriter = new MethodBodyStreamWriter(_metadata);
 
                 // offset can be aligned during serialization. So, override the correct offset.
-                offset = methodBodyWriter.AddMethodBody(method);
+                offset = methodBodyWriter.AddMethodBody(method, localVariablesSignature);
             }
 
-            var signature = _metadata.GetMethodOrConstructorSignature(method);
             var parameters = CreateParameters(method.GetParameters());
 
             var handle = _metadata.Builder.AddMethodDefinition(
                 method.Attributes,
                 method.MethodImplementationFlags,
                 _metadata.GetOrAddString(method.Name),
-                signature,
+                _metadata.GetMethodOrConstructorSignature(method),
                 offset,
                 parameters);
 
@@ -87,23 +97,6 @@ namespace Lokad.ILPack
                         _metadata.Builder.AddGenericParameterConstraint(gaHandle, _metadata.GetTypeHandle(constraint));
                     }
                 }
-            }
-
-            if (body != null && body.LocalVariables.Count > 0)
-            {
-                _metadata.Builder.AddStandaloneSignature
-                (_metadata.GetOrAddBlob(
-                    MetadataHelper.BuildSignature(x =>
-                    {
-                        var sig = x.LocalVariableSignature(body.LocalVariables.Count);
-                        foreach (var vrb in body.LocalVariables)
-                        {
-                            sig.AddVariable().Type(
-                                    vrb.LocalType.IsByRef,
-                                    vrb.IsPinned)
-                                .FromSystemType(vrb.LocalType, _metadata);
-                        }
-                    })));
             }
 
             VerifyEmittedHandle(metadata, handle);

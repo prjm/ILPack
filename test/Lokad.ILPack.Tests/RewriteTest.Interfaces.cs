@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using Xunit;
+﻿using Xunit;
 
 
 namespace Lokad.ILPack.Tests
@@ -30,6 +27,24 @@ namespace Lokad.ILPack.Tests
             Assert.Equal(1002, await Invoke(
                 $"int r = x.InterfaceMethod2();",
                 "r"));
+        }
+
+        [Fact]
+        public async void ImplementImportedInterface()
+        {
+            Assert.Equal(1, await Invoke(
+                $"var a = new MyComparable(10); var b = new MyComparable(20);",
+                "a.CompareTo(b)"
+                ));
+        }
+
+        [Fact]
+        public async void ImplementImportedGenericInterface()
+        {
+            Assert.Equal(1, await Invoke(
+                $"var a = new MyComparableT(10); var b = new MyComparableT(20);",
+                "a.CompareTo(b)"
+                ));
         }
 
     }
