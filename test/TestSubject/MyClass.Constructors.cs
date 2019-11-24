@@ -29,4 +29,18 @@ namespace TestSubject
         public string CtorStringB { get; }
 
     }
+
+    public class ClassWithProtectedCtor<T>
+    {
+        protected ClassWithProtectedCtor(int foo)
+        {
+        }
+    }
+
+    public class ClassCallingProtectedCtor : ClassWithProtectedCtor<int>
+    {
+        public ClassCallingProtectedCtor(int foo) : base(foo)
+        {
+        }
+    }
 }

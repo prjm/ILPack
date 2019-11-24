@@ -48,4 +48,19 @@ namespace TestSubject
             return a ? c : (object) e;
         }
     }
+
+    public class ClassWithProtectedMethod<T>
+    {
+        protected virtual void MyMethod(int foo)
+        {
+        }
+    }
+
+    public class ClassCallingProtectedMethod : ClassWithProtectedMethod<int>
+    {
+        protected override void MyMethod(int foo)
+        {
+            base.MyMethod(foo);
+        }
+    }
 }
